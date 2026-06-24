@@ -1,0 +1,43 @@
+{
+  "name": "wg-config-generator",
+  "version": "1.0.0",
+  "description": "Generate a WireGuard server wg0.conf and N client .conf files with real Curve25519 (X25519) keypairs. CLI + zero-dependency browser tool. Keys are created locally and never transmitted.",
+  "homepage": "https://vpnsmith.com/en/tools/wireguard-config-generator",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ricco020/wireguard-config-generator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ricco020/wireguard-config-generator/issues"
+  },
+  "bin": {
+    "wg-config": "bin/wg-config.js"
+  },
+  "main": "bin/wg-config.js",
+  "scripts": {
+    "test": "node bin/wg-config.js --clients 2 --endpoint vpn.example.com:51820 >/dev/null && echo ok"
+  },
+  "keywords": [
+    "wireguard",
+    "vpn",
+    "config",
+    "configuration",
+    "generator",
+    "wg0",
+    "curve25519",
+    "x25519",
+    "cli",
+    "wg-quick"
+  ],
+  "license": "MIT",
+  "author": "VPNSmith (https://vpnsmith.com)",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/wg-config.js",
+    "index.html",
+    "README.md",
+    "LICENSE"
+  ]
+}
