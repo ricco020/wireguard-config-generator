@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WireGuard Config Generator — client-side, keys never leave your browser</title>
+<meta name="description" content="Free, open-source WireGuard configuration generator. Generates real Curve25519 (X25519) keypairs, a server wg0.conf and N client .conf files entirely in your browser. No key is ever sent to a server." />
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface-2: #1c2230;
+    --border: #2b3340;
+    --text: #e6edf3;
+    --muted: #8b97a7;
+    --accent: #2dd4a7;
+    --accent-2: #1aa37e;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 80% -10%, #14233022, transparent), var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.55;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+  header h1 { font-size: 1.7rem; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header p.lead { color: var(--muted); margin: 0 0 8px; }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+  .badge {
+    font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
+  }
+  .badge.ok { color: var(--accent); border-color: #234a3f; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px; margin: 22px 0;
+  }
+  .privacy {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #11271f; border: 1px solid #234a3f; color: #9fe3cd;
+    padding: 12px 14px; border-radius: var(--radius); font-size: 0.85rem; margin-bottom: 20px;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 560px){ .grid { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+  input[type=text], input[type=number] {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 0.9rem;
+  }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .field { margin-bottom: 16px; }
+  .toggle { display: flex; gap: 10px; }
+  .toggle button {
+    flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--muted); font-weight: 600; cursor: pointer; font-family: var(--sans);
+  }
+  .toggle button.active { background: var(--accent); color: #06231b; border-color: var(--accent); }
+  .toggle small { display: block; font-family: var(--mono); font-size: 0.68rem; opacity: 0.75; margin-top: 2px; }
+  .generate {
+    width: 100%; margin-top: 8px; padding: 14px; font-size: 1rem; font-weight: 700; cursor: pointer;
+    background: linear-gradient(180deg, var(--accent), var(--accent-2)); color: #06231b;
+    border: none; border-radius: 9px;
+  }
+  .generate:disabled { opacity: 0.6; cursor: default; }
+  .results { margin-top: 8px; }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin: 6px 0 14px; }
+  .chip { font-size: 0.78rem; color: var(--accent); font-weight: 600; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    font-size: 0.78rem; padding: 7px 12px; border-radius: 7px; cursor: pointer;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border); font-family: var(--sans); font-weight: 600;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .conf { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .conf-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    background: var(--surface-2); padding: 9px 12px; border-bottom: 1px solid var(--border);
+  }
+  .conf-name { font-family: var(--mono); font-size: 0.8rem; font-weight: 700; }
+  .conf-title { color: var(--muted); font-size: 0.72rem; }
+  pre {
+    margin: 0; padding: 14px; background: #0a0d12; color: #cbd6e2;
+    font-family: var(--mono); font-size: 0.8rem; overflow-x: auto; max-height: 360px; overflow-y: auto;
+  }
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.82rem; border-top: 1px solid var(--border); padding-top: 18px; }
+  a { color: var(--accent); }
+  .hosted {
+    display: inline-block; margin-top: 6px; padding: 10px 14px; border-radius: 8px;
+    background: var(--surface-2); border: 1px solid #234a3f; font-size: 0.85rem; font-weight: 600;
+  }
+  code.inline { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-family: var(--mono); font-size: 0.85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>WireGuard Config Generator</h1>
+    <p class="lead">Generate a server <code class="inline">wg0.conf</code> and client <code class="inline">.conf</code> files with real Curve25519 keypairs — entirely in your browser.</p>
+    <div class="badges">
+      <span class="badge ok">100% client-side</span>
+      <span class="badge ok">No keys sent to any server</span>
+      <span class="badge">Curve25519 / X25519</span>
+      <span class="badge">MIT licensed</span>
+      <span class="badge">Zero dependencies</span>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="privacy">
+      <span aria-hidden="true">&#128274;</span>
+      <span>All key generation runs locally with the Web Crypto RNG. Your private keys are created in this tab and never transmitted. View the source — it is a single static HTML file.</span>
+    </div>
+
+    <div class="grid">
+      <div class="field">
+        <label for="endpoint">Server endpoint (public IP or hostname)</label>
+        <input type="text" id="endpoint" value="YOUR_SERVER_IP" placeholder="203.0.113.1" />
+      </div>
+      <div class="field">
+        <label for="port">Listen port</label>
+        <input type="number" id="port" value="51820" min="1" max="65535" />
+      </div>
+      <div class="field">
+        <label for="subnet">Tunnel subnet (CIDR)</label>
+        <input type="text" id="subnet" value="10.0.0.0/24" placeholder="10.0.0.0/24" />
+      </div>
+      <div class="field">
+        <label for="dns">Client DNS</label>
+        <input type="text" id="dns" value="1.1.1.1" placeholder="1.1.1.1" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="clients">Number of clients (1–10): <span id="clientLabel" style="color:var(--accent)">1</span></label>
+      <input type="range" id="clients" min="1" max="10" value="1" style="width:100%" />
+    </div>
+
+    <div class="field">
+      <label>Routing (AllowedIPs)</label>
+      <div class="toggle">
+        <button type="button" id="full" class="active" data-mode="full">Full tunnel<small>0.0.0.0/0, ::/0</small></button>
+        <button type="button" id="split" data-mode="split">Split tunnel<small>tunnel subnet only</small></button>
+      </div>
+    </div>
+
+    <button type="button" id="gen" class="generate">Generate configuration</button>
+  </div>
+
+  <div id="results" class="results" hidden>
+    <div class="toolbar">
+      <span class="chip" id="chip">configs generated</span>
+      <div class="btn-row">
+        <button type="button" class="btn" id="downloadAll">Download all</button>
+        <button type="button" class="btn" id="regen">Regenerate keys</button>
+      </div>
+    </div>
+    <div id="output"></div>
+  </div>
+
+  <footer>
+    <p><strong>Hosted, ad-free version with field-by-field tutorial:</strong></p>
+    <a class="hosted" href="https://vpnsmith.com/en/tools/wireguard-config-generator">vpnsmith.com/en/tools/wireguard-config-generator &#8599;</a>
+    <p style="margin-top:18px">
+      Open source (MIT). The generated configs are standard WireGuard files — review them before use and keep your private keys secret.
+      This tool does not store, log, or transmit anything.
+    </p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ *
+ * Minimal X25519 (Curve25519) implementation — RFC 7748.
+ * Dependency-free so the tool works offline as a single static file.
+ * Produces the same raw 32-byte keys WireGuard uses, Base64-encoded.
+ * Field arithmetic adapted from the public-domain TweetNaCl reference.
+ * ------------------------------------------------------------------ */
+function gf(init){ var r=new Float64Array(16); if(init){for(var i=0;i<init.length;i++)r[i]=init[i];} return r; }
+var _121665 = gf([0xdb41,1]);
+
+function car25519(o){
+  var c, i;
+  for(i=0;i<16;i++){
+    o[i]+=65536;
+    c=Math.floor(o[i]/65536);
+    o[(i+1)*(i<15?1:0)]+=c-1+37*(c-1)*(i===15?1:0);
+    o[i]-=c*65536;
+  }
+}
+function sel25519(p,q,b){
+  var t, c=~(b-1);
+  for(var i=0;i<16;i++){ t=c&(p[i]^q[i]); p[i]^=t; q[i]^=t; }
+}
+function A(o,a,b){ for(var i=0;i<16;i++)o[i]=a[i]+b[i]; }
+function Z(o,a,b){ for(var i=0;i<16;i++)o[i]=a[i]-b[i]; }
+function M(o,a,b){
+  var t=new Float64Array(31), i, j;
+  for(i=0;i<31;i++)t[i]=0;
+  for(i=0;i<16;i++){ for(j=0;j<16;j++){ t[i+j]+=a[i]*b[j]; } }
+  for(i=0;i<15;i++){ t[i]+=38*t[i+16]; }
+  for(i=0;i<16;i++)o[i]=t[i];
+  car25519(o); car25519(o);
+}
+function S(o,a){ M(o,a,a); }
+function inv25519(o,i){
+  var c=gf(), a;
+  for(a=0;a<16;a++)c[a]=i[a];
+  for(a=253;a>=0;a--){ S(c,c); if(a!==2&&a!==4)M(c,c,i); }
+  for(a=0;a<16;a++)o[a]=c[a];
+}
+function pack25519(o,n){
+  var i, j, b;
+  var m=gf(), t=gf();
+  for(i=0;i<16;i++)t[i]=n[i];
+  car25519(t); car25519(t); car25519(t);
+  for(j=0;j<2;j++){
+    m[0]=t[0]-0xffed;
+    for(i=1;i<15;i++){ m[i]=t[i]-0xffff-((m[i-1]>>16)&1); m[i-1]&=0xffff; }
+    m[15]=t[15]-0x7fff-((m[14]>>16)&1);
+    b=(m[15]>>16)&1; m[14]&=0xffff;
+    sel25519(t,m,1-b);
+  }
+  for(i=0;i<16;i++){ o[2*i]=t[i]&0xff; o[2*i+1]=t[i]>>8; }
+}
+function unpack25519(o,n){
+  for(var i=0;i<16;i++)o[i]=n[2*i]+(n[2*i+1]<<8);
+  o[15]&=0x7fff;
+}
+function crypto_scalarmult(q,n,p){
+  var z=new Uint8Array(32);
+  var x=new Float64Array(80), r, i;
+  var a=gf(), b=gf(), c=gf(), d=gf(), e=gf(), f=gf();
+  for(i=0;i<31;i++)z[i]=n[i];
+  z[31]=(n[31]&127)|64; z[0]&=248;
+  unpack25519(x,p);
+  for(i=0;i<16;i++){ b[i]=x[i]; d[i]=a[i]=c[i]=0; }
+  a[0]=d[0]=1;
+  for(i=254;i>=0;--i){
+    r=(z[i>>>3]>>>(i&7))&1;
+    sel25519(a,b,r); sel25519(c,d,r);
+    A(e,a,c); Z(a,a,c); A(c,b,d); Z(b,b,d);
+    S(d,e); S(f,a); M(a,c,a); M(c,b,e);
+    A(e,a,c); Z(a,a,c); S(b,a); Z(c,d,f);
+    M(a,c,_121665); A(a,a,d); M(c,c,a); M(a,d,f);
+    M(d,b,x); S(b,e);
+    sel25519(a,b,r); sel25519(c,d,r);
+  }
+  for(i=0;i<16;i++){ x[i+16]=a[i]; x[i+32]=c[i]; x[i+48]=b[i]; x[i+64]=d[i]; }
+  var x32=x.subarray(32), x16=x.subarray(16);
+  inv25519(x32,x32); M(x16,x16,x32);
+  pack25519(q,x16);
+  return 0;
+}
+var basePoint = new Uint8Array(32); basePoint[0]=9;
+
+function bytesToB64(bytes){
+  var bin="";
+  for(var i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function genKeypair(){
+  var priv=new Uint8Array(32);
+  crypto.getRandomValues(priv);
+  priv[0]&=248; priv[31]&=127; priv[31]|=64;     // clamp
+  var pub=new Uint8Array(32);
+  crypto_scalarmult(pub, priv, basePoint);
+  return { privateKey: bytesToB64(priv), publicKey: bytesToB64(pub) };
+}
+function genPSK(){
+  var b=new Uint8Array(32); crypto.getRandomValues(b); return bytesToB64(b);
+}
+
+/* ------------------------------------------------------------------ *
+ * Config builders (ported from VPNSmith's WireGuardGenerator logic).
+ * ------------------------------------------------------------------ */
+function buildConfigs(opts){
+  var base = opts.subnet.split("/")[0].split(".").slice(0,3).join(".");
+  var server = genKeypair();
+  var serverIp = base + ".1";
+  var clients = [];
+  for(var i=0;i<opts.clientCount;i++){
+    var ck = genKeypair();
+    var psk = genPSK();
+    var ip = base + "." + (i+2);
+    var conf = [
+      "[Interface]",
+      "# Client " + (i+1),
+      "PrivateKey = " + ck.privateKey,
+      "Address = " + ip + "/24",
+      "DNS = " + opts.dns,
+      "",
+      "[Peer]",
+      "PublicKey = " + server.publicKey,
+      "PresharedKey = " + psk,
+      "Endpoint = " + opts.endpoint + ":" + opts.port,
+      "AllowedIPs = " + opts.allowedIps,
+      "PersistentKeepalive = 25"
+    ].join("\n");
+    clients.push({ index:i+1, publicKey:ck.publicKey, presharedKey:psk, ip:ip, conf:conf });
+  }
+  var peers = clients.map(function(c){
+    return "[Peer]\n# Client " + c.index + "\nPublicKey = " + c.publicKey +
+           "\nPresharedKey = " + c.presharedKey + "\nAllowedIPs = " + c.ip + "/32";
+  }).join("\n\n");
+  var serverConf = [
+    "[Interface]",
+    "# WireGuard Server",
+    "PrivateKey = " + server.privateKey,
+    "Address = " + serverIp + "/24",
+    "ListenPort = " + opts.port,
+    "",
+    "# Enable IP forwarding + NAT (adjust eth0 to your WAN interface)",
+    "PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE",
+    "PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE",
+    "",
+    peers
+  ].join("\n");
+  return { serverConf: serverConf, clients: clients };
+}
+
+/* ------------------------------------------------------------------ *
+ * UI wiring — all dynamic content uses textContent / createElement
+ * (no innerHTML) so no untrusted markup can ever be injected.
+ * ------------------------------------------------------------------ */
+var $ = function(id){ return document.getElementById(id); };
+var tunnelMode = "full";
+
+$("clients").addEventListener("input", function(e){ $("clientLabel").textContent = e.target.value; });
+["full","split"].forEach(function(m){
+  $(m).addEventListener("click", function(){
+    tunnelMode = m;
+    $("full").classList.toggle("active", m==="full");
+    $("split").classList.toggle("active", m==="split");
+  });
+});
+
+function download(name, content){
+  var blob = new Blob([content], { type:"text/plain" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyText(text, btn){
+  function done(){ var t=btn.textContent; btn.textContent="Copied!"; setTimeout(function(){btn.textContent=t;},1500); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text); done(); });
+  } else { fallbackCopy(text); done(); }
+}
+function fallbackCopy(text){
+  var el=document.createElement("textarea"); el.value=text; document.body.appendChild(el);
+  el.select(); try{document.execCommand("copy");}catch(e){} document.body.removeChild(el);
+}
+
+var lastGenerated = null;
+
+function el(tag, cls, text){
+  var n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text != null) n.textContent = text;
+  return n;
+}
+
+function renderBlock(name, title, content){
+  var div = el("div", "conf");
+  var head = el("div", "conf-head");
+
+  var titleWrap = el("div");
+  titleWrap.appendChild(el("span", "conf-name", name));
+  titleWrap.appendChild(document.createTextNode(" "));
+  titleWrap.appendChild(el("span", "conf-title", title));
+
+  var row = el("div", "btn-row");
+  var copyBtn = el("button", "btn", "Copy");
+  copyBtn.type = "button";
+  copyBtn.addEventListener("click", function(){ copyText(content, copyBtn); });
+  var dlBtn = el("button", "btn", "Download");
+  dlBtn.type = "button";
+  dlBtn.addEventListener("click", function(){ download(name, content); });
+  row.appendChild(copyBtn);
+  row.appendChild(dlBtn);
+
+  head.appendChild(titleWrap);
+  head.appendChild(row);
+
+  var pre = el("pre", null, content);
+
+  div.appendChild(head);
+  div.appendChild(pre);
+  return div;
+}
+
+function generate(){
+  var subnet = $("subnet").value.trim() || "10.0.0.0/24";
+  var allowedIps = tunnelMode === "full" ? "0.0.0.0/0, ::/0" : subnet;
+  var opts = {
+    endpoint: ($("endpoint").value.trim() || "YOUR_SERVER_IP"),
+    port: parseInt($("port").value, 10) || 51820,
+    subnet: subnet,
+    dns: ($("dns").value.trim() || "1.1.1.1"),
+    clientCount: parseInt($("clients").value, 10) || 1,
+    allowedIps: allowedIps
+  };
+  var cfg = buildConfigs(opts);
+  lastGenerated = cfg;
+
+  var out = $("output");
+  while(out.firstChild) out.removeChild(out.firstChild);
+  out.appendChild(renderBlock("wg0.conf", "— server", cfg.serverConf));
+  cfg.clients.forEach(function(c){
+    out.appendChild(renderBlock("client" + c.index + ".conf", "— client " + c.index + " (" + c.ip + ")", c.conf));
+  });
+  $("chip").textContent = cfg.clients.length + " config" + (cfg.clients.length>1?"s":"") + " generated";
+  $("results").hidden = false;
+  $("results").scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+$("gen").addEventListener("click", generate);
+$("regen").addEventListener("click", generate);
+$("downloadAll").addEventListener("click", function(){
+  if(!lastGenerated) return;
+  download("wg0.conf", lastGenerated.serverConf);
+  lastGenerated.clients.forEach(function(c, i){
+    setTimeout(function(){ download("client"+c.index+".conf", c.conf); }, (i+1)*250);
+  });
+});
+</script>
+</body>
+</html>
