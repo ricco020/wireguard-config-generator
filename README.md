@@ -1,6 +1,6 @@
 # WireGuard Config Generator
 
-A free, open-source **WireGuard** configuration generator that runs **entirely in your browser**. It produces a ready-to-use server `wg0.conf` and one or more client `.conf` files, with real Curve25519 (X25519) keypairs — and **never sends a single key to a server**.
+A free, open-source **WireGuard** configuration generator that runs **entirely in your browser**. It produces a ready-to-use server `wg0.conf` and one or more client `.conf` files, with real Curve25519 (X25519) keypairs, and it **never sends a single key to a server**.
 
 It ships in two forms with **zero runtime dependencies**:
 
@@ -10,7 +10,7 @@ It ships in two forms with **zero runtime dependencies**:
 ## What it does
 
 - Generates a **WireGuard server config** (`[Interface]` + one `[Peer]` per client).
-- Generates **N client configs** (1–10), each with its own keypair, preshared key and tunnel IP.
+- Generates **N client configs** (1 to 10), each with its own keypair, preshared key and tunnel IP.
 - Real **Curve25519 / X25519** keypair generation (RFC 7748), the same key type WireGuard uses. The implementation is verified against the official RFC 7748 test vectors.
 - Per-peer **preshared keys** (`PresharedKey`) for an extra symmetric layer.
 - **Full-tunnel** (`AllowedIPs = 0.0.0.0/0, ::/0`) or **split-tunnel** routing.
@@ -37,7 +37,7 @@ All cryptography runs locally using the browser's Web Crypto RNG (`crypto.getRan
 The package also ships a Node CLI that generates the same server + client
 configs from the terminal. Keys are produced with Node's **native X25519**
 (`crypto.generateKeyPairSync('x25519')`), clamped per RFC 7748 and Base64-encoded
-exactly as WireGuard expects — nothing is transmitted.
+exactly as WireGuard expects; nothing is transmitted.
 
 Install globally:
 
@@ -89,11 +89,28 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 
 A hosted, ad-free version with a field-by-field tutorial is available here:
 
-**https://vpnsmith.com/en/tools/wireguard-config-generator**
+**[vpnsmith.com/en/tools/wireguard-config-generator](https://www.vpnsmith.com/en/tools/wireguard-config-generator?src=github&ref=gh-wgcg)**
+
+## Before you generate: the server side
+
+The configs only work if clients can reach the server's `ListenPort` over UDP. That means a machine with a **public IPv4 address** and an open UDP port. A home connection behind CGNAT (common on 4G/5G boxes and many fibre ISPs) cannot accept inbound WireGuard, whatever the config says.
+
+- Not sure if you are behind CGNAT? [WireGuard behind CGNAT: why it fails and how to fix it](https://www.vpnsmith.com/en/blog/wireguard-behind-cgnat?src=github&ref=gh-wgcg)
+- Renting a small VPS for it: [step-by-step WireGuard on a Contabo VPS](https://www.vpnsmith.com/en/blog/self-host-vpn-contabo-wireguard-2026?src=github&ref=gh-wgcg) (covers firewall, IP forwarding and NAT rules for the `wg0.conf` this tool produces)
+
+## Troubleshooting the generated configs
+
+| Symptom after `wg-quick up` | Usual cause | Guide |
+| --- | --- | --- |
+| `Handshake did not complete after 5 seconds` | Blocked UDP port, wrong endpoint, swapped public keys | [8 causes, checked in order](https://www.vpnsmith.com/en/blog/wireguard-handshake-troubleshooting-2026?src=github&ref=gh-wgcg) |
+| Tunnel up, some sites hang or time out | MTU too high on PPPoE, 4G or nested tunnels | [MTU 1420 vs 1280](https://www.vpnsmith.com/en/blog/wireguard-mtu-fix-2026?src=github&ref=gh-wgcg) |
+| Connection drops after a few idle minutes | NAT mapping expires on the client side | [PersistentKeepalive = 25](https://www.vpnsmith.com/en/blog/wireguard-persistent-keepalive-2026?src=github&ref=gh-wgcg) |
+| `wg-quick: line 32: resolvconf: command not found` | `DNS =` line on a system without resolvconf | [resolvconf fix](https://www.vpnsmith.com/en/blog/wireguard-resolvconf-not-found-2026?src=github&ref=gh-wgcg) |
+| Works on LAN, never from outside | Server behind CGNAT or no port forward | [CGNAT guide](https://www.vpnsmith.com/en/blog/wireguard-behind-cgnat?src=github&ref=gh-wgcg) |
 
 ## Tech notes
 
-- X25519 scalar multiplication is a dependency-free port of the public-domain TweetNaCl reference field arithmetic, validated against RFC 7748 §5.2 / §6.1 test vectors.
+- X25519 scalar multiplication is a dependency-free port of the public-domain TweetNaCl reference field arithmetic, validated against RFC 7748 sections 5.2 and 6.1 test vectors.
 - Keys are clamped per RFC 7748 and Base64-encoded exactly as WireGuard expects.
 - The UI builds all dynamic content with `textContent` / `createElement` (no `innerHTML`).
 
