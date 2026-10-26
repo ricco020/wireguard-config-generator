@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>WireGuard Config Generator — client-side, keys never leave your browser</title>
+<title>WireGuard Config Generator: client-side, keys never leave your browser</title>
 <meta name="description" content="Free, open-source WireGuard configuration generator. Generates real Curve25519 (X25519) keypairs, a server wg0.conf and N client .conf files entirely in your browser. No key is ever sent to a server." />
 <style>
   :root {
@@ -101,7 +101,7 @@
 <div class="wrap">
   <header>
     <h1>WireGuard Config Generator</h1>
-    <p class="lead">Generate a server <code class="inline">wg0.conf</code> and client <code class="inline">.conf</code> files with real Curve25519 keypairs — entirely in your browser.</p>
+    <p class="lead">Generate a server <code class="inline">wg0.conf</code> and client <code class="inline">.conf</code> files with real Curve25519 keypairs, entirely in your browser.</p>
     <div class="badges">
       <span class="badge ok">100% client-side</span>
       <span class="badge ok">No keys sent to any server</span>
@@ -114,7 +114,7 @@
   <div class="card">
     <div class="privacy">
       <span aria-hidden="true">&#128274;</span>
-      <span>All key generation runs locally with the Web Crypto RNG. Your private keys are created in this tab and never transmitted. View the source — it is a single static HTML file.</span>
+      <span>All key generation runs locally with the Web Crypto RNG. Your private keys are created in this tab and never transmitted. View the source: it is a single static HTML file.</span>
     </div>
 
     <div class="grid">
@@ -137,7 +137,7 @@
     </div>
 
     <div class="field">
-      <label for="clients">Number of clients (1–10): <span id="clientLabel" style="color:var(--accent)">1</span></label>
+      <label for="clients">Number of clients (1 to 10): <span id="clientLabel" style="color:var(--accent)">1</span></label>
       <input type="range" id="clients" min="1" max="10" value="1" style="width:100%" />
     </div>
 
@@ -165,9 +165,9 @@
 
   <footer>
     <p><strong>Hosted, ad-free version with field-by-field tutorial:</strong></p>
-    <a class="hosted" href="https://vpnsmith.com/en/tools/wireguard-config-generator">vpnsmith.com/en/tools/wireguard-config-generator &#8599;</a>
+    <a class="hosted" href="https://www.vpnsmith.com/en/tools/wireguard-config-generator?src=github&amp;ref=gh-wgcg-html">vpnsmith.com/en/tools/wireguard-config-generator &#8599;</a>
     <p style="margin-top:18px">
-      Open source (MIT). The generated configs are standard WireGuard files — review them before use and keep your private keys secret.
+      Open source (MIT). The generated configs are standard WireGuard files. Review them before use and keep your private keys secret.
       This tool does not store, log, or transmit anything.
     </p>
   </footer>
@@ -176,7 +176,7 @@
 <script>
 "use strict";
 /* ------------------------------------------------------------------ *
- * Minimal X25519 (Curve25519) implementation — RFC 7748.
+ * Minimal X25519 (Curve25519) implementation, RFC 7748.
  * Dependency-free so the tool works offline as a single static file.
  * Produces the same raw 32-byte keys WireGuard uses, Base64-encoded.
  * Field arithmetic adapted from the public-domain TweetNaCl reference.
@@ -325,7 +325,7 @@ function buildConfigs(opts){
 }
 
 /* ------------------------------------------------------------------ *
- * UI wiring — all dynamic content uses textContent / createElement
+ * UI wiring: all dynamic content uses textContent / createElement
  * (no innerHTML) so no untrusted markup can ever be injected.
  * ------------------------------------------------------------------ */
 var $ = function(id){ return document.getElementById(id); };
@@ -413,9 +413,9 @@ function generate(){
 
   var out = $("output");
   while(out.firstChild) out.removeChild(out.firstChild);
-  out.appendChild(renderBlock("wg0.conf", "— server", cfg.serverConf));
+  out.appendChild(renderBlock("wg0.conf", "(server)", cfg.serverConf));
   cfg.clients.forEach(function(c){
-    out.appendChild(renderBlock("client" + c.index + ".conf", "— client " + c.index + " (" + c.ip + ")", c.conf));
+    out.appendChild(renderBlock("client" + c.index + ".conf", "(client " + c.index + ", " + c.ip + ")", c.conf));
   });
   $("chip").textContent = cfg.clients.length + " config" + (cfg.clients.length>1?"s":"") + " generated";
   $("results").hidden = false;
